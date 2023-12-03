@@ -7,11 +7,18 @@ const { exec, spawn, ChildProcess } = require('child_process');
 let youtubeDLProcess = null;
 let ffplayProcess = null;
 let canPlay = false;
+let stopMusicFlag = false;
 
+/**
+ * @param {string} url
+ */
 function isPlaylist(url) {
 	return url.includes('playlist');
 }
 
+/**
+ * @param {string} url
+ */
 function isURL(url) {
 	return url.includes('http');
 }
@@ -35,6 +42,7 @@ function precheckCommand() {
 	vscode.window.showInformationMessage(`Musikid is ready to stream music!`);
 	canPlay = true;
 }
+
 function stopMusicCommand() {
 	if (canPlay) {
 		if (youtubeDLProcess) {
@@ -48,11 +56,19 @@ function stopMusicCommand() {
 	}
 }
 
+function playNextSongCommand() {
+	stopMusicCommand();
+	playMusic(getRandomSong());
+}
+
 function getRandomSong() {
 	const arrayOfSongs = vscode.workspace.getConfiguration('musikid').get('localPlaylist');
 	const random = arrayOfSongs[Math.floor(Math.random() * arrayOfSongs.length)];
 	return random;
 }
+/**
+ * @param {string} music
+ */
 function playMusic(music) {
 	const ytdlpath = vscode.workspace.getConfiguration('musikid').get('youtube-dl-path');
 	const ffplayPath = vscode.workspace.getConfiguration('musikid').get('ffplay-path');
@@ -76,13 +92,16 @@ function playMusic(music) {
 	youtubeDLProcess.stdout.pipe(ffplayProcess.stdin);
 	ffplayProcess.on('close', () => {
 		console.log(`ffplay process exited`);
-		stopMusicCommand();
-		// execute streamMusic again
-		playMusic(getRandomSong());
+		if (stopMusicFlag) {
+			stopMusicCommand();
+			stopMusicFlag = false;
+		} else {
+			playNextSongCommand();
+		}
 	});
 	
 	
-	vscode.window.showInformationMessage(`Now playing: ${user_input}`);
+	vscode.window.showInformationMessage(`Now playing: ${music}`);
 	if (vscode.workspace.getConfiguration('musikid').get('verbose')) {
 		console.log(`$ ${ytdlpath} pid: ${youtubeDLProcess.pid} ffplay pid: ${ffplayProcess.pid}}`);
 	}
@@ -121,8 +140,14 @@ function activate(context) {
 	});
 
 	let stopMusic = vscode.commands.registerCommand('musikid.stopMusic', function () {
+		stopMusicFlag = true;
 		stopMusicCommand();
 	});
+	
+	let nextMusic = vscode.commands.registerCommand('musikid.nextMusic', function () {
+		stopMusicCommand();
+	});
+
 
 	context.subscriptions.push(streamMusic);
 	context.subscriptions.push(stopMusic);
