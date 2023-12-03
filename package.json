@@ -2,20 +2,64 @@
   "name": "musikid",
   "displayName": "MusiKid",
   "description": "Stream music without leaving VSCode",
+  "author": {
+    "name": "Viranchee",
+    "email": "viranchee9@gmail.com",
+    "url": "https://www.github.com/viranchee"
+  },
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.84.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Education"
   ],
   "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
-    "commands": [{
-      "command": "musikid.helloWorld",
-      "title": "Hello World"
-    }]
+    "commands": [
+      {
+        "command": "musikid.streamMusic",
+        "title": "MusiKid: Play Music"
+      },
+      {
+        "command": "musikid.stopMusic",
+        "title": "MusiKid: Stop Music"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "MusiKid",
+      "properties": {
+        "musikid.localPlaylist": {
+          "description": "Local songs to play from",
+          "type": "array",
+          "default": ["Britney Spears - Toxic", "Fashion - Kuch Khaas", "Jan Wayne"]
+        },
+        "musikid.randomizePlaylist": {
+          "type": "boolean",
+          "default": false,
+          "description": "Randomize playlist, if any"
+        },
+        "musikid.extraArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Extra Arguments"
+        },
+        "musikid.youtube-dl-path": {
+          "type": "string",
+          "default": "yt-dlp",
+          "description": "Path to youtube-dl executable"
+        },
+        "musikid.ffplay-path": {
+          "type": "string",
+          "default": "ffplay",
+          "description": "Path to ffplay executable"
+        }
+
+      }
+    }
   },
   "scripts": {
     "lint": "eslint .",

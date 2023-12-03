@@ -1,37 +1,139 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 const vscode = require('vscode');
+const { exec, spawn, ChildProcess } = require('child_process');
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+/**
+ * @param {ChildProcess} youtubeDLProcess
+*/
+let youtubeDLProcess = null;
+let ffplayProcess = null;
+let canPlay = false;
+
+function isPlaylist(url) {
+	return url.includes('playlist');
+}
+
+function isURL(url) {
+	return url.includes('http');
+}
+
+function precheckCommand() {
+	// Check dependencies
+	const ytdlpath = vscode.workspace.getConfiguration('musikid').get('youtube-dl-path');
+	// Check if the path is valid
+	exec(`${ytdlpath} --version`, (err, _stdout, _stderr) => {
+		if (err) {
+			vscode.window.showErrorMessage(`Musikid: youtube-dl path is invalid`);
+			return;
+		}
+	});
+	exec(`ffplay -version`, (err, _stdout, _stderr) => {
+		if (err) {
+			vscode.window.showErrorMessage(`Musikid: ffplay is not installed`);
+			return;
+		}
+	});
+	vscode.window.showInformationMessage(`Musikid is ready to stream music!`);
+	canPlay = true;
+}
+function stopMusicCommand() {
+	if (canPlay) {
+		if (youtubeDLProcess) {
+			youtubeDLProcess.kill();
+			youtubeDLProcess = null;
+		}
+		if (ffplayProcess) {
+			ffplayProcess.kill();
+			ffplayProcess = null;
+		}
+	}
+}
+
+function getRandomSong() {
+	const arrayOfSongs = vscode.workspace.getConfiguration('musikid').get('localPlaylist');
+	const random = arrayOfSongs[Math.floor(Math.random() * arrayOfSongs.length)];
+	return random;
+}
+function playMusic(music) {
+	const ytdlpath = vscode.workspace.getConfiguration('musikid').get('youtube-dl-path');
+	const ffplayPath = vscode.workspace.getConfiguration('musikid').get('ffplay-path');
+	const extraArgs = vscode.workspace.getConfiguration('musikid').get('extraArgs');
+	let query = "";
+
+	if (isURL(music)) {
+		if (isPlaylist(music)) {
+			query = `--yes-playlist ${music}`;
+		} else {
+			query = `"${music}"`;
+		}
+	} else {
+		query = `ytsearch:"${music}"`
+	}
+
+	const youtubedlArgs = [extraArgs, query, `-o`, `-`];
+	const ffplayArgs = "-nodisp -autoexit -hide_banner -loglevel panic -i -".split(" ");
+	youtubeDLProcess = spawn(ytdlpath, youtubedlArgs, { stdio: ['ignore', 'pipe', 'ignore'] });
+	ffplayProcess = spawn(ffplayPath, ffplayArgs, { stdio: ['pipe', process.stdout, process.stderr] });
+	youtubeDLProcess.stdout.pipe(ffplayProcess.stdin);
+	ffplayProcess.on('close', () => {
+		console.log(`ffplay process exited`);
+		stopMusicCommand();
+		// execute streamMusic again
+		playMusic(getRandomSong());
+	});
+	
+	
+	vscode.window.showInformationMessage(`Now playing: ${user_input}`);
+	if (vscode.workspace.getConfiguration('musikid').get('verbose')) {
+		console.log(`$ ${ytdlpath} pid: ${youtubeDLProcess.pid} ffplay pid: ${ffplayProcess.pid}}`);
+	}
+
+}
+
 
 /**
  * @param {vscode.ExtensionContext} context
  */
-let count = 0;
 function activate(context) {
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	count++;
-	console.log(`"Musikid" activated ${count} times!`);
-	
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with  registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('musikid.helloWorld', function () {
-		// The code you place here will be executed every time your command is executed
-		
-		// Display a message box to the user
-		count++;
-		vscode.window.showInformationMessage(`MusiKid Rocks! ${count}`);
+	console.log(`"Musikid" activated!`);
+
+	let streamMusic = vscode.commands.registerCommand('musikid.streamMusic', function () {
+		if (!canPlay) {
+			// run precheck
+			precheckCommand();
+		}
+
+		let randomSong = getRandomSong();
+
+		vscode.window.showInputBox({
+			placeHolder: "Song name / URL / Playlist URL",
+			prompt: "Enter song name or url",
+			value: randomSong
+		}).then((user_input) => {
+			if (!user_input) {
+				return;
+			}
+			// vscode.commands.executeCommand('stopMusic');
+			stopMusicCommand();
+			playMusic(user_input);
+			
+		});
 	});
 
-	context.subscriptions.push(disposable);
+	let stopMusic = vscode.commands.registerCommand('musikid.stopMusic', function () {
+		stopMusicCommand();
+	});
+
+	context.subscriptions.push(streamMusic);
+	context.subscriptions.push(stopMusic);
 }
 
-// This method is called when your extension is deactivated
-function deactivate() {}
+
+
+function deactivate() {
+	console.log(`"Musikid" deactivated!`);
+	stopMusicCommand();
+}
 
 module.exports = {
 	activate,
