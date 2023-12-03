@@ -26,6 +26,10 @@
       {
         "command": "musikid.stopMusic",
         "title": "MusiKid: Stop Music"
+      },
+      {
+        "command": "musikid.nextMusic",
+        "title": "MusiKid: Next Song"
       }
     ],
     "configuration": {

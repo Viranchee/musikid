@@ -100,7 +100,6 @@ function playMusic(music) {
 		}
 	});
 	
-	
 	vscode.window.showInformationMessage(`Now playing: ${music}`);
 	if (vscode.workspace.getConfiguration('musikid').get('verbose')) {
 		console.log(`$ ${ytdlpath} pid: ${youtubeDLProcess.pid} ffplay pid: ${ffplayProcess.pid}}`);
@@ -133,7 +132,9 @@ function activate(context) {
 				return;
 			}
 			// vscode.commands.executeCommand('stopMusic');
+			stopMusicFlag = true;
 			stopMusicCommand();
+			stopMusicFlag = false;
 			playMusic(user_input);
 			
 		});
@@ -151,6 +152,7 @@ function activate(context) {
 
 	context.subscriptions.push(streamMusic);
 	context.subscriptions.push(stopMusic);
+	context.subscriptions.push(nextMusic);
 }
 
 
